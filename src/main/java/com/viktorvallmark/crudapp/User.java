@@ -17,6 +17,11 @@ public class User {
     this.id = id;
   }
 
+  public enum Role {
+    Customer,
+    Admin,
+  }
+
   public long getId() {
     return id;
   }
@@ -88,4 +93,6 @@ public class User {
       System.err.println(e.toString());
     }
   }
+
+  public void createTransaction(Account yourAcc, double amount, Account toAcc) {}
 }

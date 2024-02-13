@@ -1,13 +1,22 @@
 package com.viktorvallmark.crudapp;
 
+import com.viktorvallmark.crudapp.User.Role;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.ArrayList;
 
 public class Swosh {
   private ArrayList<User> userList = new ArrayList<>();
   private long userId = 1;
+  private Connection conn;
 
   public Swosh() {
-    super();
+    try {
+      Class.forName("com.mysql.jdbc.Driver");
+      conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/swosh", "root", "123");
+    } catch (Exception e) {
+      System.err.println("SQLException: " + e.getMessage());
+    }
   }
 
   private long generateId() {
@@ -19,11 +28,15 @@ public class Swosh {
     }
   }
 
-  public void addUser(Role role, String name, String pass, long id) {
+  public void addUser(String name, String pass, long id, int flag) {
+    if (flag == 0) {
+      User newUser = new User(name, pass, Role.Customer, generateId());
 
-    User newUser = new User(name, pass, role, generateId());
-
-    userList.add(newUser);
+      userList.add(newUser);
+    } else {
+      User newAdmin = new User(name, pass, Role.Admin, generateId());
+      userList.add(newAdmin);
+    }
   }
 
   public void removeUser(User user) {
