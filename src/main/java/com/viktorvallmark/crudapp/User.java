@@ -1,5 +1,6 @@
 package com.viktorvallmark.crudapp;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 
 public class User {
@@ -94,5 +95,20 @@ public class User {
     }
   }
 
-  public void createTransaction(Account yourAcc, double amount, Account toAcc) {}
+  public double addAmount(double amount, Account acc) {
+    acc.addOrWithdrawAmount(0, amount);
+    return amount;
+  }
+
+  public double withdrawAmount(double amount, Account acc) {
+    acc.addOrWithdrawAmount(1, amount);
+    return amount;
+  }
+
+  public Transaction createTransaction(double amount, User toUser) {
+    LocalDateTime datetime = LocalDateTime.now();
+    Transaction newTransaction = new Transaction(datetime, amount, this, toUser);
+
+    return newTransaction;
+  }
 }

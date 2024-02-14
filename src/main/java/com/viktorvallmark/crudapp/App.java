@@ -7,6 +7,7 @@ public class App {
 
     Swosh swosh = new Swosh();
     boolean running = true;
+    swosh.createDatabase();
     System.out.println(
         " Welcome to Swosh!\n"
             + " Please choose an option:\n"

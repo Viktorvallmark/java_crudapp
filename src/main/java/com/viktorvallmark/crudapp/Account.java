@@ -1,6 +1,5 @@
 package com.viktorvallmark.crudapp;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 
 public class Account {
@@ -27,7 +26,7 @@ public class Account {
     return amount;
   }
 
-  public void setAmount(int flag, double amount) {
+  public void addOrWithdrawAmount(int flag, double amount) {
 
     switch (flag) {
       case 0:
@@ -39,18 +38,19 @@ public class Account {
     }
   }
 
-  public void createTransaction(double amount, User fromUser, User toUser) {
-    LocalDateTime datetime = LocalDateTime.now();
-    Transaction transaction = new Transaction(datetime, amount, fromUser, toUser);
-
-    transAcc.add(transaction);
-
-    System.out.println("You have transfered " + amount + " to " + toUser.toString());
-  }
-
   public void getAllTransactions() {
     for (Transaction trans : transAcc) {
       System.out.println(trans.toString() + "\n");
     }
+  }
+
+  @Override
+  public String toString() {
+    return "Account:\n id: "
+        + this.id
+        + " \n owner: "
+        + this.owner.toString()
+        + " \n amount: "
+        + this.amount;
   }
 }
