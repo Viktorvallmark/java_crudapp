@@ -8,14 +8,14 @@ public class Transaction {
   private double amount;
   private User fromUser;
   private User toUser;
+  private long id;
 
-  // TODO: Add ID as a field
-
-  public Transaction(LocalDateTime datetime, double amount, User fromUser, User toUser) {
+  public Transaction(LocalDateTime datetime, double amount, User fromUser, User toUser, long id) {
     this.datetime = datetime;
     this.amount = amount;
     this.fromUser = fromUser;
     this.toUser = toUser;
+    this.id = id;
   }
 
   @Override

@@ -10,6 +10,7 @@ public class User {
   private long id;
   private int accid = 1;
   private ArrayList<Account> accList = new ArrayList<>();
+  private long transactionId = 1;
 
   public User(String username, String password, Role role, long id) {
     this.username = username;
@@ -53,6 +54,15 @@ public class User {
 
   public ArrayList<Account> getAccList() {
     return accList;
+  }
+
+  private long generateTransactionId() {
+    if (transactionId == 1) {
+      return transactionId;
+    } else {
+      transactionId++;
+      return transactionId;
+    }
   }
 
   private int generateAccId() {
@@ -107,7 +117,8 @@ public class User {
 
   public Transaction createTransaction(double amount, User toUser) {
     LocalDateTime datetime = LocalDateTime.now();
-    Transaction newTransaction = new Transaction(datetime, amount, this, toUser);
+    Transaction newTransaction =
+        new Transaction(datetime, amount, this, toUser, generateTransactionId());
 
     return newTransaction;
   }
