@@ -27,15 +27,26 @@ public class Swosh {
     }
   }
 
+  public User getUser(User user) {
+    for (User u : userList) {
+      if (u.equals(user)) {
+        return user;
+      } else {
+        System.err.println("No such user was found!");
+        return null;
+      }
+    }
+    return null;
+  }
+
   public void createDatabase() {
     try {
-      String statement =
-          "CREATE DATABASE IF NOT EXIST swosh; CREATE TABLE IF NOT EXIST users(user int NOT NULL,"
-              + " name VARCHAR(128) NOT NULL, password VARCHAR(128) NOT NULL, role VARCHAR(32) NOT"
-              + " NULL ); CREATE TABLE IF NOT EXIST account(acc_id int NOT NULL, user int NOT"
-              + " NULL, amount double NOT NULL ); CREATE TABLE IF NOT EXIST"
-              + " transaction(transaction int NOT NULL, fromUser int NOT NULL, toUser int NOT NULL,"
-              + " amount double NOT NULL);";
+      String statement = "CREATE DATABASE IF NOT EXIST swosh; CREATE TABLE IF NOT EXIST users(user int NOT NULL,"
+          + " name VARCHAR(128) NOT NULL, password VARCHAR(128) NOT NULL, role VARCHAR(32) NOT"
+          + " NULL ); CREATE TABLE IF NOT EXIST account(acc_id int NOT NULL, user int NOT"
+          + " NULL, amount double NOT NULL ); CREATE TABLE IF NOT EXIST"
+          + " transaction(transaction int NOT NULL, fromUser int NOT NULL, toUser int NOT NULL,"
+          + " amount double NOT NULL);";
       System.out.println("Creating database...");
       conn.prepareStatement(statement).execute();
       System.out.println("Database created!");
@@ -48,35 +59,36 @@ public class Swosh {
     return conn;
   }
 
-  public void addUser(String name, String pass, long id, int flag) {
+  public User addUser(String name, String pass, int flag) {
     try {
       if (flag == 0) {
         User newUser = new User(name, pass, Role.Customer, generateId());
         Statement statement = conn.createStatement();
-        ResultSet resultSet =
-            statement.executeQuery(
-                "INSERT INTO user(newUser.getId(), newUser.getUsername(), newUser.getPassword(),"
-                    + " newUser.getRole() )");
+        ResultSet resultSet = statement.executeQuery(
+            "INSERT INTO user(newUser.getId(), newUser.getUsername(), newUser.getPassword(),"
+                + " newUser.getRole() )");
         userList.add(newUser);
         while (resultSet.next()) {
           System.out.println("User created with id: " + newUser.getId());
         }
+        return newUser;
       } else {
 
         User newAdmin = new User(name, pass, Role.Admin, generateId());
         Statement statement = conn.createStatement();
-        ResultSet resultSet =
-            statement.executeQuery(
-                "INSERT INTO user(newUser.getId(), newUser.getUsername(), newUser.getPassword(),"
-                    + " newUser.getRole() )");
+        ResultSet resultSet = statement.executeQuery(
+            "INSERT INTO user(newUser.getId(), newUser.getUsername(), newUser.getPassword(),"
+                + " newUser.getRole() )");
         userList.add(newAdmin);
         while (resultSet.next()) {
           System.out.println("Admin created with id: " + newAdmin.getId());
         }
+        return newAdmin;
       }
     } catch (SQLException e) {
       System.err.println("SQLException: " + e.getMessage());
     }
+    return null;
   }
 
   public void removeUser(User user) {
