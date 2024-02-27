@@ -3,18 +3,18 @@ package com.viktorvallmark.crudapp;
 import java.util.ArrayList;
 
 public class Account {
-  private int id;
+  private long id;
   private double amount;
   private User owner;
   private ArrayList<Transaction> transAcc = new ArrayList<>();
 
-  public Account(double amount, User owner, int id) {
+  public Account(double amount, User owner, long id) {
     this.id = id;
     this.amount = amount;
     this.owner = owner;
   }
 
-  public int getId() {
+  public long getId() {
     return id;
   }
 

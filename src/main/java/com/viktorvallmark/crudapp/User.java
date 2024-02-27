@@ -1,31 +1,27 @@
 package com.viktorvallmark.crudapp;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Scanner;
 
 public class User {
   private String username;
   private String password;
   private Role role;
-  private long id;
   private int accid = 1;
-  private ArrayList<Account> accList = new ArrayList<>();
+  private Account acc;
   private long transactionId = 1;
 
-  public User(String username, String password, Role role, long id) {
+  public User(String username, String password, Role role) {
     this.username = username;
     this.password = password;
     this.role = role;
-    this.id = id;
+    this.acc = new Account(0, this, generateAccId());
   }
 
   public enum Role {
     Customer,
     Admin,
-  }
-
-  public long getId() {
-    return id;
   }
 
   public String getUsername() {
@@ -52,8 +48,8 @@ public class User {
     this.role = role;
   }
 
-  public ArrayList<Account> getAccList() {
-    return accList;
+  public Account getAcc() {
+    return acc;
   }
 
   private long generateTransactionId() {
@@ -65,9 +61,8 @@ public class User {
     }
   }
 
-  private int generateAccId() {
-
-    if (this.accid == 1) {
+  private long generateAccId() {
+    if (accid == 1) {
       return accid;
     } else {
       accid++;
@@ -80,46 +75,91 @@ public class User {
     return "User: " + username;
   }
 
-  public Account createAccount(double amount) {
-
-    Account acc = new Account(amount, this, generateAccId());
-    accList.add(acc);
-
-    return acc;
-  }
-
-  public void deleteAccount(Account acc) {
-
+  public void addAmount(Scanner scanRegister, Swosh swosh) {
     try {
-
-      if (accList.contains(acc)) {
-        accList.remove(accList.indexOf(acc));
+      System.out.println("How much money do you want to deposit?: \n");
+      int deposit = scanRegister.nextInt();
+      String stmt = "UPDATE account SET amount = amount " + deposit + " WHERE acc_id = " + acc.getId() + ";";
+      int results = swosh.getConnection().createStatement().executeUpdate(stmt);
+      if (results == 0) {
+        throw new SQLException("Something went wrong!");
+      } else {
+        System.out.println("You have deposited: " + deposit + " :-");
       }
-      System.out.println(
-          "User deleted account with id: "
-              + acc.getId()
-              + ". \n Money to be returned: "
-              + acc.getAmount());
-    } catch (Exception e) {
-      System.err.println(e.toString());
+      acc.addOrWithdrawAmount(0, deposit);
+    } catch (SQLException e) {
+      System.err.println("Error adding money to account: " + e.getMessage());
     }
   }
 
-  public double addAmount(double amount, Account acc) {
-    acc.addOrWithdrawAmount(0, amount);
-    return amount;
+  public void withdrawAmount(Scanner scanRegister, Swosh swosh) {
+    try {
+      System.out.println("How much money do you want to withdraw?: \n");
+      int withdraw = scanRegister.nextInt();
+      String stmtWithdraw = "UPDATE account SET amount = amount - " + withdraw + ";";
+      int resultsWithdraw = swosh.getConnection().createStatement().executeUpdate(stmtWithdraw);
+      if (resultsWithdraw == 0) {
+        throw new SQLException("Something went wrong!");
+      } else {
+        System.out.println("You withdrew: " + withdraw + " :-");
+      }
+    } catch (SQLException e) {
+      System.err.println("Error withdrawing money from account: " + e.getMessage());
+    }
   }
 
-  public double withdrawAmount(double amount, Account acc) {
-    acc.addOrWithdrawAmount(1, amount);
-    return amount;
+  public void printAccount(Scanner scan, Swosh swosh) {
+    try {
+      System.out.println("What id does the account have?: ");
+      int id = scan.nextInt();
+      String printStmt = "SELECT * FROM account WHERE user_id = " + id + ";";
+      ResultSet printResult = swosh.getConnection().createStatement().executeQuery(printStmt);
+      while (printResult.next()) {
+        System.out.println("Account information: " + printResult.toString());
+      }
+    } catch (SQLException e) {
+      System.err.println(
+          "Something went wrong trying to print account statement: " + e.getMessage());
+    }
   }
 
-  public Transaction createTransaction(double amount, User toUser) {
-    LocalDateTime datetime = LocalDateTime.now();
-    Transaction newTransaction =
-        new Transaction(datetime, amount, this, toUser, generateTransactionId());
-
-    return newTransaction;
+  public boolean createTransaction(Swosh swosh, Scanner scanRegister) {
+    try {
+      System.out.println("How much money do you want to send?: \n");
+      int sendAmount = scanRegister.nextInt();
+      System.out.println("To whom do you want to send?: \n");
+      int sendToUser = scanRegister.nextInt();
+      String stmtSend = "UPDATE account SET amount = amount -"
+          + sendAmount
+          + "WHERE accid = "
+          + this.accid
+          + "; UPDATE account SET amount = amount +"
+          + sendAmount
+          + " WHERE accid = "
+          + sendToUser
+          + ";";
+      int resultsSend = swosh.getConnection().createStatement().executeUpdate(stmtSend);
+      String stmtTrans = "INSERT INTO transaction(transaction, accid, toUser, amount) VALUES ("
+          + generateTransactionId()
+          + ", "
+          + this.accid
+          + ", "
+          + sendToUser
+          + ", "
+          + sendAmount
+          + ");";
+      int resultStatment = swosh.getConnection().createStatement().executeUpdate(stmtTrans);
+      if (resultsSend == 0 && resultStatment == 0) {
+        System.err.println("Something went wrong with the transfer, please try again!");
+        return false;
+      } else {
+        System.out.println(
+            "You have sent: " + sendAmount + " :- \n You have sent it to user: " + sendToUser);
+        return true;
+      }
+    } catch (SQLException e) {
+      System.err.println(e.getMessage());
+    }
+    return false;
   }
 }
