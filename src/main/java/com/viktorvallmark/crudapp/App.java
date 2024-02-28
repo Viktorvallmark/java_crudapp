@@ -1,10 +1,10 @@
 package com.viktorvallmark.crudapp;
 
-import com.viktorvallmark.crudapp.User.Role;
 import java.sql.*;
 import java.util.Scanner;
 
 public class App {
+
   public static void main(String[] args) {
 
     // mvn exec:java -Dexec.mainClass="com.viktorvallmark.crudapp.App" -s
@@ -27,44 +27,42 @@ public class App {
       while (running) {
         switch (scanMain.nextInt()) {
           case 1:
+            String loginString = "SELECT userid FROM users WHERE name = ? AND password = ?;";
+            PreparedStatement loginStmt = swosh.getConnection().prepareStatement(loginString);
             System.out.println("Please enter username: ");
             String username = scanLogin.next();
             System.out.println("Please enter password: ");
             String pass = scanLogin.next();
-            String stmt = "SELECT userid FROM users WHERE name = '"
-                + username
-                + "' AND password = '"
-                + pass
-                + "'";
-            boolean loginResults = swosh.getConnection().createStatement().execute(stmt);
-            if (loginResults == false) {
-              System.out.println("Please register as an user!");
-              running = false;
-              System.exit(0);
-            } else {
-              swosh.addUser(username, pass, 0);
-              isLoggedin = true;
+
+            swosh.getConnection().setAutoCommit(false);
+            loginStmt.setString(1, username);
+            loginStmt.setString(2, pass);
+            ResultSet loginResult = loginStmt.executeQuery();
+            int userid = 0;
+
+            swosh.getConnection().commit();
+            while (loginResult.next()) {
+              userid = loginResult.getInt("userid");
             }
+
+            isLoggedin = true;
+            swosh.setUser(new User(username, pass, userid));
+
             break;
           case 2:
             System.out.println("Welcome to registration!");
             System.out.println("Please enter your username: ");
             String registerName = scanRegister.next();
             System.out.println("Please enter your password: ");
-            String registerPass = scanRegister.next();
-            String statement = "INSERT INTO user(name, pass, role) VALUES ("
-                + registerName
-                + ", "
-                + registerPass
-                + ","
-                + Role.Customer
-                + ")";
-            int regiResult = swosh.getConnection().createStatement().executeUpdate(statement);
+            String registerPass = scanLogin.next();
+
+            int regiResult = swosh.addUserAccount(registerName, registerPass, 0.0f);
             if (regiResult != 0) {
               System.out.println("You are now registered!");
+              isLoggedin = true;
+            } else {
+              System.err.println("Something went wrong with registration");
             }
-            isLoggedin = true;
-            swosh.addUser(registerName, registerPass, 0);
             break;
           case 3:
             System.out.println("Thanks for using Swosh!");
@@ -97,7 +95,7 @@ public class App {
               swosh.getUser().withdrawAmount(scanRegister, swosh);
               break;
             case 4:
-              boolean temp = swosh.removeUser(swosh.getUser(), scanRegister);
+              boolean temp = swosh.removeUserAccount(swosh.getUser(), scanRegister);
               if (temp == true) {
                 running = false;
               } else {

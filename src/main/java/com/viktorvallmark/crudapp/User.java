@@ -1,27 +1,22 @@
 package com.viktorvallmark.crudapp;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
 
 public class User {
+
   private String username;
   private String password;
-  private Role role;
-  private int accid = 1;
   private Account acc;
-  private long transactionId = 1;
+  private int id;
 
-  public User(String username, String password, Role role) {
+  public User(String username, String password, int id) {
     this.username = username;
     this.password = password;
-    this.role = role;
-    this.acc = new Account(0, this, generateAccId());
-  }
-
-  public enum Role {
-    Customer,
-    Admin,
+    this.acc = new Account(0, this);
+    this.id = id;
   }
 
   public String getUsername() {
@@ -40,125 +35,113 @@ public class User {
     this.password = password;
   }
 
-  public Role getRole() {
-    return role;
-  }
-
-  public void setRole(Role role) {
-    this.role = role;
-  }
-
   public Account getAcc() {
     return acc;
   }
 
-  private long generateTransactionId() {
-    if (transactionId == 1) {
-      return transactionId;
-    } else {
-      transactionId++;
-      return transactionId;
-    }
+  public int getUserId() {
+    return id;
   }
 
-  private long generateAccId() {
-    if (accid == 1) {
-      return accid;
-    } else {
-      accid++;
-      return accid;
-    }
-  }
-
-  @Override
-  public String toString() {
-    return "User: " + username;
-  }
-
-  public void addAmount(Scanner scanRegister, Swosh swosh) {
-    try {
-      System.out.println("How much money do you want to deposit?: \n");
-      int deposit = scanRegister.nextInt();
-      String stmt = "UPDATE account SET amount = amount " + deposit + " WHERE acc_id = " + acc.getId() + ";";
-      int results = swosh.getConnection().createStatement().executeUpdate(stmt);
-      if (results == 0) {
-        throw new SQLException("Something went wrong!");
-      } else {
-        System.out.println("You have deposited: " + deposit + " :-");
-      }
-      acc.addOrWithdrawAmount(0, deposit);
+  public void addAmount(Scanner scanRegister, Swosh swosh) throws SQLException {
+    System.out.println("How much money do you want to deposit? Please use integers: \n");
+    int deposit = scanRegister.nextInt();
+    String updateString = "UPDATE account SET amount = amount + ? WHERE accid = ?";
+    try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString);) {
+      swosh.getConnection().setAutoCommit(false);
+      updateAmount.setInt(1, deposit);
+      updateAmount.setInt(2, swosh.getUser().getUserId());
+      updateAmount.executeUpdate();
+      swosh.getConnection().commit();
+      System.out.println("You have added " + deposit + " to your account!");
     } catch (SQLException e) {
-      System.err.println("Error adding money to account: " + e.getMessage());
+      System.err.println(
+          "Something went wrong when adding money to your account!: " + e.getMessage());
     }
+    getAcc().addAmount(deposit);
   }
 
-  public void withdrawAmount(Scanner scanRegister, Swosh swosh) {
-    try {
-      System.out.println("How much money do you want to withdraw?: \n");
-      int withdraw = scanRegister.nextInt();
-      String stmtWithdraw = "UPDATE account SET amount = amount - " + withdraw + ";";
-      int resultsWithdraw = swosh.getConnection().createStatement().executeUpdate(stmtWithdraw);
-      if (resultsWithdraw == 0) {
-        throw new SQLException("Something went wrong!");
-      } else {
-        System.out.println("You withdrew: " + withdraw + " :-");
-      }
+  public void withdrawAmount(Scanner scanRegister, Swosh swosh) throws SQLException {
+
+    System.out.println("How much money do you want to withdraw? Please use integers: \n");
+    int withdraw = scanRegister.nextInt();
+    String updateString = "UPDATE account SET amount = amount - ? WHERE userid = ?";
+    try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString);) {
+      swosh.getConnection().setAutoCommit(false);
+      updateAmount.setInt(1, withdraw);
+      updateAmount.setInt(2, swosh.getUser().getUserId());
+      updateAmount.executeUpdate();
+      swosh.getConnection().commit();
+      System.out.println("You withdrew " + withdraw + " from your account!");
     } catch (SQLException e) {
-      System.err.println("Error withdrawing money from account: " + e.getMessage());
+      System.err.println(
+          "Something went wrong when adding money to your account!: " + e.getMessage());
     }
+    getAcc().withdrawAmount(withdraw);
   }
 
-  public void printAccount(Scanner scan, Swosh swosh) {
-    try {
-      System.out.println("What id does the account have?: ");
-      int id = scan.nextInt();
-      String printStmt = "SELECT * FROM account WHERE user_id = " + id + ";";
-      ResultSet printResult = swosh.getConnection().createStatement().executeQuery(printStmt);
-      while (printResult.next()) {
-        System.out.println("Account information: " + printResult.toString());
+  public void printAccount(Scanner scan, Swosh swosh) throws SQLException {
+    String query = "SELECT useraccid, amount FROM account WHERE useraccid = ?";
+
+    try (PreparedStatement accQuery = swosh.getConnection().prepareStatement(query);) {
+      swosh.getConnection().setAutoCommit(false);
+      accQuery.setInt(1, swosh.getUser().getUserId());
+      ResultSet res = accQuery.executeQuery();
+      while (res.next()) {
+        int useraccid = res.getInt("useraccid");
+        double amount = res.getDouble("amount");
+        System.out.println("UserAccId: " + useraccid + " \n Amount: " + amount + "");
       }
     } catch (SQLException e) {
       System.err.println(
-          "Something went wrong trying to print account statement: " + e.getMessage());
+          "Something went wrong trying to show account details: "
+              + e.getMessage()
+              + " \n Possible cause: "
+              + e.getCause());
     }
   }
 
-  public boolean createTransaction(Swosh swosh, Scanner scanRegister) {
-    try {
-      System.out.println("How much money do you want to send?: \n");
-      int sendAmount = scanRegister.nextInt();
-      System.out.println("To whom do you want to send?: \n");
-      int sendToUser = scanRegister.nextInt();
-      String stmtSend = "UPDATE account SET amount = amount -"
-          + sendAmount
-          + "WHERE accid = "
-          + this.accid
-          + "; UPDATE account SET amount = amount +"
-          + sendAmount
-          + " WHERE accid = "
-          + sendToUser
-          + ";";
-      int resultsSend = swosh.getConnection().createStatement().executeUpdate(stmtSend);
-      String stmtTrans = "INSERT INTO transaction(transaction, accid, toUser, amount) VALUES ("
-          + generateTransactionId()
-          + ", "
-          + this.accid
-          + ", "
-          + sendToUser
-          + ", "
-          + sendAmount
-          + ");";
-      int resultStatment = swosh.getConnection().createStatement().executeUpdate(stmtTrans);
-      if (resultsSend == 0 && resultStatment == 0) {
-        System.err.println("Something went wrong with the transfer, please try again!");
+  public boolean createTransaction(Swosh swosh, Scanner scanRegister) throws SQLException {
+
+    String fromUserQuery = "UPDATE account SET amount = amount - ? WHERE useraccid = ?;";
+    String amountQuery = "INSERT INTO transaction(fromUser, toUser, amount) VALUE (?, ?, ?);";
+    String toUserQuery = "UPDATE account SET amount = amount + ? WHERE useraccid = ?;";
+
+    System.out.println("How much money do you want to send?: \n");
+    int sendAmount = scanRegister.nextInt();
+    System.out.println("To whom do you want to send?: \n");
+    int sendToUser = scanRegister.nextInt();
+    try (PreparedStatement fromUserStmt = swosh.getConnection().prepareStatement(fromUserQuery);
+        PreparedStatement amountStmt = swosh.getConnection().prepareStatement(amountQuery);
+        PreparedStatement toUserStmt = swosh.getConnection().prepareStatement(toUserQuery)) {
+      swosh.getConnection().setAutoCommit(false);
+      // From user
+      fromUserStmt.setInt(1, sendAmount);
+      fromUserStmt.setInt(2, swosh.getUser().getUserId());
+      int fromUserResult = fromUserStmt.executeUpdate();
+      // Making the amountStmt
+      amountStmt.setInt(1, swosh.getUser().getUserId());
+      amountStmt.setInt(2, sendToUser);
+      amountStmt.setInt(3, sendAmount);
+      int amountResult = amountStmt.executeUpdate();
+      // To User
+      toUserStmt.setInt(1, sendAmount);
+      toUserStmt.setInt(2, sendToUser);
+      int toUserResult = toUserStmt.executeUpdate();
+      swosh.getConnection().commit();
+
+      if (fromUserResult == 0 || amountResult == 0 || toUserResult == 0) {
+        System.err.println(
+            "Something went wrong when trying to send from: "
+                + swosh.getUser().getUsername()
+                + " \n to user: "
+                + sendToUser);
         return false;
       } else {
-        System.out.println(
-            "You have sent: " + sendAmount + " :- \n You have sent it to user: " + sendToUser);
         return true;
       }
     } catch (SQLException e) {
-      System.err.println(e.getMessage());
+      System.err.println("SQLException when creating a transaction: " + e.getMessage());
     }
     return false;
   }
