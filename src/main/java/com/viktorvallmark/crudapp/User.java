@@ -46,7 +46,7 @@ public class User {
   public void addAmount(Scanner scanRegister, Swosh swosh) throws SQLException {
     System.out.println("How much money do you want to deposit? Please use integers: \n");
     int deposit = scanRegister.nextInt();
-    String updateString = "UPDATE account SET amount = amount + ? WHERE accid = ?";
+    String updateString = "UPDATE account SET amount = amount + ? WHERE useraccid = ?";
     try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString);) {
       swosh.getConnection().setAutoCommit(false);
       updateAmount.setInt(1, deposit);
@@ -65,17 +65,36 @@ public class User {
 
     System.out.println("How much money do you want to withdraw? Please use integers: \n");
     int withdraw = scanRegister.nextInt();
-    String updateString = "UPDATE account SET amount = amount - ? WHERE userid = ?";
-    try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString);) {
+    String updateString = "UPDATE account SET amount = amount - ? WHERE useraccid = ?";
+    String checkPositiveBalance = "SELECT amount FROM account WHERE useraccid = ?;";
+    try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString);
+        PreparedStatement checkPositiveBalanceStmt = swosh.getConnection().prepareStatement(checkPositiveBalance);) {
       swosh.getConnection().setAutoCommit(false);
-      updateAmount.setInt(1, withdraw);
-      updateAmount.setInt(2, swosh.getUser().getUserId());
-      updateAmount.executeUpdate();
+
+      // Check if withdraw doesn't bring account < 0
+      checkPositiveBalanceStmt.setInt(1, swosh.getUser().getUserId());
+      ResultSet rs = checkPositiveBalanceStmt.executeQuery();
       swosh.getConnection().commit();
-      System.out.println("You withdrew " + withdraw + " from your account!");
+
+      double money = 0;
+      while (rs.next()) {
+        money = rs.getDouble("amount");
+      }
+      if (money > withdraw) {
+
+        updateAmount.setInt(1, withdraw);
+        updateAmount.setInt(2, swosh.getUser().getUserId());
+        updateAmount.executeUpdate();
+
+        swosh.getConnection().commit();
+        System.out.println("You withdrew " + withdraw + " from your account!");
+      } else {
+        System.err.println("You do not have enough money in your account!");
+      }
+
     } catch (SQLException e) {
       System.err.println(
-          "Something went wrong when adding money to your account!: " + e.getMessage());
+          "Something went wrong when withdrawing money from your account!: " + e.getMessage());
     }
     getAcc().withdrawAmount(withdraw);
   }
@@ -90,13 +109,13 @@ public class User {
       while (res.next()) {
         int useraccid = res.getInt("useraccid");
         double amount = res.getDouble("amount");
-        System.out.println("UserAccId: " + useraccid + " \n Amount: " + amount + "");
+        System.out.println("UserAccId: " + useraccid + " \nAmount: " + amount + "");
       }
     } catch (SQLException e) {
       System.err.println(
           "Something went wrong trying to show account details: "
               + e.getMessage()
-              + " \n Possible cause: "
+              + " \nPossible cause: "
               + e.getCause());
     }
   }
@@ -134,7 +153,7 @@ public class User {
         System.err.println(
             "Something went wrong when trying to send from: "
                 + swosh.getUser().getUsername()
-                + " \n to user: "
+                + " \nto user: "
                 + sendToUser);
         return false;
       } else {

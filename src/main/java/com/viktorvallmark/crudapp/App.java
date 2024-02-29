@@ -12,78 +12,55 @@ public class App {
 
     boolean isLoggedin = false;
     Swosh swosh = new Swosh();
-    boolean running = true;
+    boolean runningLogin = true;
+    boolean runningMenu = false;
     swosh.createDatabase();
     Scanner scanLogin = new Scanner(System.in);
     Scanner scanMain = new Scanner(System.in);
     Scanner scanRegister = new Scanner(System.in);
-    System.out.println(
-        " Welcome to Swosh!\n"
-            + " Please choose an option:\n"
-            + " 1. Log in \n"
-            + " 2. Register an account \n"
-            + " 3. Quit");
-    try {
-      while (running) {
-        switch (scanMain.nextInt()) {
-          case 1:
-            String loginString = "SELECT userid FROM users WHERE name = ? AND password = ?;";
-            PreparedStatement loginStmt = swosh.getConnection().prepareStatement(loginString);
-            System.out.println("Please enter username: ");
-            String username = scanLogin.next();
-            System.out.println("Please enter password: ");
-            String pass = scanLogin.next();
-
-            swosh.getConnection().setAutoCommit(false);
-            loginStmt.setString(1, username);
-            loginStmt.setString(2, pass);
-            ResultSet loginResult = loginStmt.executeQuery();
-            int userid = 0;
-
-            swosh.getConnection().commit();
-            while (loginResult.next()) {
-              userid = loginResult.getInt("userid");
-            }
-
-            isLoggedin = true;
-            swosh.setUser(new User(username, pass, userid));
-
+    int choiceLogin = swosh.login(scanMain);
+    while (runningLogin) {
+      switch (choiceLogin) {
+        case 1:
+          isLoggedin = swosh.loginLanding(scanLogin);
+          if (isLoggedin) {
+            runningLogin = false;
+            runningMenu = true;
+          }
+          break;
+        case 2:
+          boolean temp = swosh.registrationLanding(scanRegister);
+          if (!temp) {
+            System.err.println("Something went wrong with the registration!");
+            System.exit(1);
             break;
-          case 2:
-            System.out.println("Welcome to registration!");
-            System.out.println("Please enter your username: ");
-            String registerName = scanRegister.next();
-            System.out.println("Please enter your password: ");
-            String registerPass = scanLogin.next();
+          }
 
-            int regiResult = swosh.addUserAccount(registerName, registerPass, 0.0f);
-            if (regiResult != 0) {
-              System.out.println("You are now registered!");
-              isLoggedin = true;
-            } else {
-              System.err.println("Something went wrong with registration");
-            }
-            break;
-          case 3:
-            System.out.println("Thanks for using Swosh!");
-            running = false;
+          choiceLogin = swosh.login(scanMain);
+          break;
+        case 3:
+          System.out.println("Thanks for using Swosh!");
+          runningLogin = false;
+          try {
             swosh.getConnection().close();
-            System.exit(0);
-            break;
-          default:
-            break;
-        }
-        if (isLoggedin) {
-          System.out.println(
-              "Welcome to your Swosh! Please select an option: \n"
-                  + " 1. Deposit money \n"
-                  + " 2. Send money \n"
-                  + " 3. Withdraw money \n"
-                  + " 4. Close account \n"
-                  + " 5. Print account information \n"
-                  + " 6. Quit");
+          } catch (SQLException e) {
+            System.err.println(
+                "Something went wrong when closing the connection to the database: "
+                    + e.getMessage()
+                    + " \n Possible cause: "
+                    + e.getCause());
+          }
+          System.exit(0);
+          break;
+        default:
+          break;
+      }
+    }
+    if (isLoggedin) {
+      while (runningMenu) {
+        int choice = swosh.menu(scanLogin);
+        try {
 
-          int choice = scanLogin.nextInt();
           switch (choice) {
             case 1:
               swosh.getUser().addAmount(scanRegister, swosh);
@@ -97,32 +74,35 @@ public class App {
             case 4:
               boolean temp = swosh.removeUserAccount(swosh.getUser(), scanRegister);
               if (temp == true) {
-                running = false;
-              } else {
-                running = true;
+                runningMenu = false;
               }
+              System.out.println(
+                  "Sad to see you leave, please register a new account whenever you want!");
+              swosh.getConnection().close();
+              System.exit(0);
               break;
             case 5:
               swosh.getUser().printAccount(scanRegister, swosh);
               break;
             case 6:
               System.out.println("Good bye and please come again!");
+              swosh.getConnection().close();
               isLoggedin = false;
-              running = false;
+              runningMenu = false;
               System.exit(0);
               break;
             default:
+              System.exit(1);
               break;
           }
+        } catch (SQLException e) {
+          System.err.println(
+              "Something went wrong while in the options menu: "
+                  + e.getMessage()
+                  + " \n Possible cause: "
+                  + e.getCause());
         }
       }
-    } catch (SQLException e) {
-      System.err.println("SQLException: " + e.getMessage());
-      System.err.println("SQLError: " + e.getErrorCode());
-    } finally {
-      scanLogin.close();
-      scanRegister.close();
-      scanMain.close();
     }
   }
 }
