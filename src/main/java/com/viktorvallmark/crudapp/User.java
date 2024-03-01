@@ -47,7 +47,7 @@ public class User {
     System.out.println("How much money do you want to deposit? Please use integers: \n");
     int deposit = scanRegister.nextInt();
     String updateString = "UPDATE account SET amount = amount + ? WHERE useraccid = ?";
-    try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString);) {
+    try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString); ) {
       swosh.getConnection().setAutoCommit(false);
       updateAmount.setInt(1, deposit);
       updateAmount.setInt(2, swosh.getUser().getUserId());
@@ -68,7 +68,8 @@ public class User {
     String updateString = "UPDATE account SET amount = amount - ? WHERE useraccid = ?";
     String checkPositiveBalance = "SELECT amount FROM account WHERE useraccid = ?;";
     try (PreparedStatement updateAmount = swosh.getConnection().prepareStatement(updateString);
-        PreparedStatement checkPositiveBalanceStmt = swosh.getConnection().prepareStatement(checkPositiveBalance);) {
+        PreparedStatement checkPositiveBalanceStmt =
+            swosh.getConnection().prepareStatement(checkPositiveBalance); ) {
       swosh.getConnection().setAutoCommit(false);
 
       // Check if withdraw doesn't bring account < 0
@@ -102,7 +103,7 @@ public class User {
   public void printAccount(Scanner scan, Swosh swosh) throws SQLException {
     String query = "SELECT useraccid, amount FROM account WHERE useraccid = ?";
 
-    try (PreparedStatement accQuery = swosh.getConnection().prepareStatement(query);) {
+    try (PreparedStatement accQuery = swosh.getConnection().prepareStatement(query); ) {
       swosh.getConnection().setAutoCommit(false);
       accQuery.setInt(1, swosh.getUser().getUserId());
       ResultSet res = accQuery.executeQuery();
@@ -123,26 +124,43 @@ public class User {
   public boolean createTransaction(Swosh swosh, Scanner scanRegister) throws SQLException {
 
     String fromUserQuery = "UPDATE account SET amount = amount - ? WHERE useraccid = ?;";
-    String amountQuery = "INSERT INTO transaction(fromUser, toUser, amount) VALUE (?, ?, ?);";
+    String transactionAmountQuery =
+        "INSERT INTO transaction(fromUser, toUser, amount) VALUE (?, ?, ?);";
     String toUserQuery = "UPDATE account SET amount = amount + ? WHERE useraccid = ?;";
+    String checkPositiveBalance = "SELECT amount FROM account WHERE useraccid = ?;";
 
     System.out.println("How much money do you want to send?: \n");
     int sendAmount = scanRegister.nextInt();
     System.out.println("To whom do you want to send?: \n");
     int sendToUser = scanRegister.nextInt();
     try (PreparedStatement fromUserStmt = swosh.getConnection().prepareStatement(fromUserQuery);
-        PreparedStatement amountStmt = swosh.getConnection().prepareStatement(amountQuery);
-        PreparedStatement toUserStmt = swosh.getConnection().prepareStatement(toUserQuery)) {
+        PreparedStatement transAmountStmt =
+            swosh.getConnection().prepareStatement(transactionAmountQuery);
+        PreparedStatement toUserStmt = swosh.getConnection().prepareStatement(toUserQuery);
+        PreparedStatement checkPositiveBalanceStmt =
+            swosh.getConnection().prepareStatement(checkPositiveBalance)) {
       swosh.getConnection().setAutoCommit(false);
+      // Check if sending user has enough in account
+      checkPositiveBalanceStmt.setInt(1, swosh.getUser().getUserId());
+      ResultSet rs = checkPositiveBalanceStmt.executeQuery();
+      int amount = 0;
+      while (rs.next()) {
+        amount = rs.getInt("amount");
+      }
+      if (amount < sendAmount) {
+        System.err.println("You don't have enough money for this transaction");
+        return false;
+      }
+      swosh.getConnection().commit();
       // From user
       fromUserStmt.setInt(1, sendAmount);
       fromUserStmt.setInt(2, swosh.getUser().getUserId());
       int fromUserResult = fromUserStmt.executeUpdate();
       // Making the amountStmt
-      amountStmt.setInt(1, swosh.getUser().getUserId());
-      amountStmt.setInt(2, sendToUser);
-      amountStmt.setInt(3, sendAmount);
-      int amountResult = amountStmt.executeUpdate();
+      transAmountStmt.setInt(1, swosh.getUser().getUserId());
+      transAmountStmt.setInt(2, sendToUser);
+      transAmountStmt.setInt(3, sendAmount);
+      int amountResult = transAmountStmt.executeUpdate();
       // To User
       toUserStmt.setInt(1, sendAmount);
       toUserStmt.setInt(2, sendToUser);
